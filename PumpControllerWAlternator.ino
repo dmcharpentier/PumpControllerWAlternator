@@ -293,24 +293,73 @@ void setMessage(int msg)
   }
 }
 
+void delMessage(int msg)
+{
+  if (bitRead(msg1to8, msg))
+      {
+        removeMessage(msg);
+        bitClear(msg1to8, msg);
+      }
+}
+
+void handLogic()
+{
+  if (bitRead(pumpHand, 0))
+  {
+    bitSet(setRelay, 0);
+    setMessage(3);
+    running = 1;
+  }
+  if (bitRead(pumpHand, 1))
+  {
+    bitSet(setRelay, 1);
+    setMessage(5);
+    running = 2;
+  }
+}
+
+void clearAuto()
+{
+  delMessage(1);
+  delMessage(2);
+  delMessage(4);
+  delMessage(6);
+}
+
+void clearHand()
+{
+  delMessage(3);
+  delMessage(5);
+  delMessage(7);
+}
+
 void pumpLogic()
 {
   if (handActive)
   {
-    if (bitRead(pumpHand, 0))
+    clearAuto();
+    handLogic();
+  }
+  else
+  {
+    clearHand();
+  }
+
+  if (autoActive && !handActive)
+  {
+    if (!run)
     {
-      bitSet(setRelay, 0);
-      addMessage(3);
-      running = 1;
-    }
-    if (bitRead(pumpHand, 1))
-    {
-      bitSet(setRelay, 1);
-      addMessage(5);
-      running = 2;
+        setMessage(1);
+        setRelay = 0;
+        running = 0;
     }
   }
-  
+  else
+  {
+    clearAuto();
+    setMessage(0);
+  }
+
   if (!run)
   {
     if (autoActive)
@@ -322,7 +371,7 @@ void pumpLogic()
       }
       if (bitRead(msg1to8, 3))
       {
-        delMessage(3);
+        removeMessage(3);
         bitClear(msg1to8, 3);
       }
       bitClear(setRelay, 0);
@@ -345,20 +394,16 @@ void pumpLogic()
       if (run && !activePump)
       {
         bitSet(setRelay, 0);
-        bitSet(setRelay, 3);
+        bitSet(setRelay, 7);
         setMessage(2);
         running = 1;
       }
     }
-    else if (activePump)
+    else
     {
       bitClear(setRelay, 0);
-      bitClear(setRelay, 3);
-      if (bitRead(msg1to8, 2))
-      {
-        delMessage(2);
-        bitClear(msg1to8, 2);
-      }
+      bitClear(setRelay, 7);
+      delMessage(2);
     }
 
     // Pump2
@@ -367,7 +412,7 @@ void pumpLogic()
       if (run && activePump)
       {
         bitSet(setRelay, 1);
-        bitSet(setRelay, 4);
+        bitSet(setRelay, 6);
         setMessage(4);
         running = 2;
       }
@@ -375,10 +420,10 @@ void pumpLogic()
     else if (!activePump)
     {
       bitClear(setRelay, 1);
-      bitClear(setRelay, 4);
+      bitClear(setRelay, 6);
       if (bitRead(msg1to8, 3))
       {
-        delMessage(3);
+        removeMessage(3);
         bitClear(msg1to8, 3);
       }
     }
@@ -445,7 +490,7 @@ void addMessage(int option)
  * 
  * @param option The index of the message to be removed.
  */
-void delMessage(int option)
+void removeMessage(int option)
 {
   // Get the message to be removed
   int targetData[4];
