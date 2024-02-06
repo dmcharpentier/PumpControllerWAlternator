@@ -1,6 +1,6 @@
 #include <SD.h>
-//#include "MessageHandler.h"
-// #include <SoftwareSerial.h>
+// #include "MessageHandler.h"
+//  #include <SoftwareSerial.h>
 
 #define uchar unsigned char
 #define uint unsigned int
@@ -102,7 +102,7 @@ byte readByteFrom165()
 
 /**
  * @brief Updates the display and relay based on the current communication number.
- * 
+ *
  * This function increments the communication number and updates the display data
  * based on the new communication number. It then calls the bitRelayUpdate() function
  * to update the relay.
@@ -132,7 +132,7 @@ void bitRelayUpdate()
 
 /**
  * Checks if a specified delay has elapsed since the last time the function was called.
- * 
+ *
  * @param delay The delay in milliseconds.
  * @return Returns 1 if the specified delay has elapsed, otherwise returns 0.
  */
@@ -156,7 +156,7 @@ int checkRunTimeElapsed(int delay)
 
 /**
  * Sets the active pump based on the pumpAuto flags.
- * 
+ *
  * @param currentPump The current active pump.
  * @return The new active pump.
  */
@@ -284,7 +284,6 @@ int handActive()
   {
     return 0;
   }
-  
 }
 
 int autoActive()
@@ -303,7 +302,7 @@ void setMessage(int msg)
 {
   if (!bitRead(msg1to8, msg))
   {
-    //Serial.println(bitRead(msg1to8, msg));
+    // Serial.println(bitRead(msg1to8, msg));
     addMessage(msg);
     bitSet(msg1to8, msg);
   }
@@ -312,10 +311,10 @@ void setMessage(int msg)
 void delMessage(int msg)
 {
   if (bitRead(msg1to8, msg))
-      {
-        removeMessage(msg);
-        bitClear(msg1to8, msg);
-      }
+  {
+    removeMessage(msg);
+    bitClear(msg1to8, msg);
+  }
 }
 
 void handLogic()
@@ -331,7 +330,7 @@ void handLogic()
     bitClear(setRelay, 0);
     delMessage(3);
   }
-  
+
   if (bitRead(pumpHand, 1))
   {
     bitSet(setRelay, 1);
@@ -372,12 +371,12 @@ void pumpLogic()
     clearHand();
     handLogic();
   }
-  
+
   if (autoActive() == 1 && handActive() == 0)
   {
     if (!run)
     {
-      //delMessage(0);
+      // delMessage(0);
       setMessage(1);
       setRelay = 0b00000000;
       running = 0;
@@ -424,14 +423,14 @@ void pumpLogic()
   }
   else
   {
-    //clearAuto();
-    //setMessage(0);
+    // clearAuto();
+    // setMessage(0);
   }
 }
 
 /**
  * Sets the display bits for a 4-digit display.
- * 
+ *
  * @param displayChar An array of integers representing the bits to be displayed on each digit.
  */
 void setDisplayBits(const int displayChar[4])
@@ -444,7 +443,7 @@ void setDisplayBits(const int displayChar[4])
 
 /**
  * Adds a new message to the activeMessages array.
- * 
+ *
  * @param option The index of the status message to be added.
  */
 void addMessage(int option)
@@ -485,10 +484,10 @@ void addMessage(int option)
 
 /**
  * @brief Deletes a message from the statusMessages array based on the given option.
- * 
+ *
  * This function removes a message from the statusMessages array by comparing it with the targetData.
  * If a matching message is found, it is removed from the activeMessages array.
- * 
+ *
  * @param option The index of the message to be removed.
  */
 void removeMessage(int option)
@@ -512,7 +511,7 @@ void removeMessage(int option)
 
   for (int i = 0; i < messageQty; i++)
   {
-    //Serial.println(compareArrays(activeMessages[i], targetData));
+    // Serial.println(compareArrays(activeMessages[i], targetData));
     if (compareArrays(activeMessages[i], targetData))
     {
       // If the current message matches the targetData, remove it
@@ -523,20 +522,20 @@ void removeMessage(int option)
           activeMessages[j][k] = activeMessages[j + 1][k];
         }
       }
-      //Serial.println("Compare found an equal");
+      // Serial.println("Compare found an equal");
       messageQty--;
       break; // Break out of the loop after removing the first matching message
     }
     else
     {
-      //Serial.println("Compare found no equal");
+      // Serial.println("Compare found no equal");
     }
   }
 }
 
 /**
  * Compares two arrays of integers.
- * 
+ *
  * @param array1 The first array to compare.
  * @param array2 The second array to compare.
  * @return True if the arrays are identical, false otherwise.
