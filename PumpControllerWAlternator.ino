@@ -55,7 +55,7 @@ int activeMessages[10][4] = {0}; // Initialize all elements to 0, adjust the siz
 int currentMessage[4] = {0};     // Initialize all elements to 0
 
 unsigned long lastDisplayChangeTime = 0;
-const int displayChangeInterval = 1000;
+const int displayChangeInterval = 1500;
 int currentMessageIndex = 0;
 
 // Set tube segment hex characters
@@ -392,6 +392,7 @@ void pumpLogic()
           bitSet(setRelay, 0);
           bitSet(setRelay, 7);
           setMessage(2);
+          setMessage(1);
           running = 1;
         }
       }
@@ -410,6 +411,7 @@ void pumpLogic()
           bitSet(setRelay, 1);
           bitSet(setRelay, 6);
           setMessage(4);
+          setMessage(1);
           running = 2;
         }
       }
