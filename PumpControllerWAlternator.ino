@@ -274,20 +274,36 @@ void inputLogic(byte inputs)
   }
 }
 
-bool handActive()
+int handActive()
 {
-  return bitRead(pumpHand, 0) || bitRead(pumpHand, 1) || bitRead(pumpHand, 2);
+  if (bitRead(pumpHand, 0) || bitRead(pumpHand, 1) || bitRead(pumpHand, 2))
+  {
+    return 1;
+  }
+  else
+  {
+    return 0;
+  }
+  
 }
 
-bool autoActive()
+int autoActive()
 {
-  return bitRead(pumpAuto, 0) || bitRead(pumpAuto, 1) || bitRead(pumpAuto, 2);
+  if (bitRead(pumpAuto, 0) || bitRead(pumpAuto, 1) || bitRead(pumpAuto, 2))
+  {
+    return 1;
+  }
+  else
+  {
+    return 0;
+  }
 }
 
 void setMessage(int msg)
 {
   if (!bitRead(msg1to8, msg))
   {
+    //Serial.println(bitRead(msg1to8, msg));
     addMessage(msg);
     bitSet(msg1to8, msg);
   }
@@ -310,11 +326,22 @@ void handLogic()
     setMessage(3);
     running = 1;
   }
+  else
+  {
+    bitClear(setRelay, 0);
+    delMessage(3);
+  }
+  
   if (bitRead(pumpHand, 1))
   {
     bitSet(setRelay, 1);
     setMessage(5);
     running = 2;
+  }
+  else
+  {
+    bitClear(setRelay, 1);
+    delMessage(5);
   }
 }
 
@@ -343,90 +370,62 @@ void pumpLogic()
   else
   {
     clearHand();
+    handLogic();
   }
-
-  if (autoActive && !handActive)
+  
+  if (autoActive() == 1 && handActive() == 0)
   {
     if (!run)
     {
-        setMessage(1);
-        setRelay = 0;
-        running = 0;
-    }
-  }
-  else
-  {
-    clearAuto();
-    setMessage(0);
-  }
-
-  if (!run)
-  {
-    if (autoActive)
-    {
-      if (!bitRead(msg1to8, 1))
-      {
-        addMessage(1);
-        bitSet(msg1to8, 1);
-      }
-      if (bitRead(msg1to8, 3))
-      {
-        removeMessage(3);
-        bitClear(msg1to8, 3);
-      }
-      bitClear(setRelay, 0);
-      bitClear(setRelay, 1);
-      bitClear(setRelay, 3);
-      bitClear(setRelay, 4);
+      //delMessage(0);
+      setMessage(1);
+      setRelay = 0b00000000;
       running = 0;
     }
-    else
+
+    if (run)
     {
-      setMessage(0);
+      // Pump1
+      if (bitRead(pumpAuto, 0) && !activePump)
+      {
+        if (run && !activePump)
+        {
+          bitSet(setRelay, 0);
+          bitSet(setRelay, 7);
+          setMessage(2);
+          running = 1;
+        }
+      }
+      else
+      {
+        bitClear(setRelay, 0);
+        bitClear(setRelay, 7);
+        delMessage(2);
+      }
+
+      // Pump2
+      if (bitRead(pumpAuto, 1) && activePump)
+      {
+        if (run && activePump)
+        {
+          bitSet(setRelay, 1);
+          bitSet(setRelay, 6);
+          setMessage(4);
+          running = 2;
+        }
+      }
+      else if (!activePump)
+      {
+        bitClear(setRelay, 1);
+        bitClear(setRelay, 6);
+        delMessage(4);
+      }
     }
   }
   else
   {
-    // Pump1
-    // messageQty = 0;
-    if (bitRead(pumpAuto, 0) && !activePump && !bitRead(pumpHand, 0) && run)
-    {
-      if (run && !activePump)
-      {
-        bitSet(setRelay, 0);
-        bitSet(setRelay, 7);
-        setMessage(2);
-        running = 1;
-      }
-    }
-    else
-    {
-      bitClear(setRelay, 0);
-      bitClear(setRelay, 7);
-      delMessage(2);
-    }
-
-    // Pump2
-    if (bitRead(pumpAuto, 1) && activePump && !bitRead(pumpHand, 1) && run)
-    {
-      if (run && activePump)
-      {
-        bitSet(setRelay, 1);
-        bitSet(setRelay, 6);
-        setMessage(4);
-        running = 2;
-      }
-    }
-    else if (!activePump)
-    {
-      bitClear(setRelay, 1);
-      bitClear(setRelay, 6);
-      if (bitRead(msg1to8, 3))
-      {
-        removeMessage(3);
-        bitClear(msg1to8, 3);
-      }
-    }
+    //clearAuto();
+    //setMessage(0);
   }
 }
 
@@ -466,6 +465,7 @@ void addMessage(int option)
     {
       activeMessages[messageQty][i] = newData[i];
     }
+    /**
     Serial.print("Adding new message: ");
     Serial.print(option);
     Serial.print(",");
@@ -474,6 +474,7 @@ void addMessage(int option)
       Serial.print(newData[i]);
     }
     Serial.println();
+    **/
     messageQty++;
   }
   else
@@ -498,6 +499,7 @@ void removeMessage(int option)
   {
     targetData[i] = statusMessages[option][i];
   }
+  /**
   Serial.print("Deleting message: ");
   Serial.print(option);
   Serial.print(",");
@@ -506,10 +508,11 @@ void removeMessage(int option)
     Serial.print(targetData[i]);
   }
   Serial.println();
+  **/
 
   for (int i = 0; i < messageQty; i++)
   {
-    Serial.println(compareArrays(activeMessages[i], targetData));
+    //Serial.println(compareArrays(activeMessages[i], targetData));
     if (compareArrays(activeMessages[i], targetData))
     {
       // If the current message matches the targetData, remove it
@@ -520,13 +523,13 @@ void removeMessage(int option)
           activeMessages[j][k] = activeMessages[j + 1][k];
         }
       }
-      Serial.println("Compare found an equal");
+      //Serial.println("Compare found an equal");
       messageQty--;
       break; // Break out of the loop after removing the first matching message
     }
     else
     {
-      Serial.println("Compare found no equal");
+      //Serial.println("Compare found no equal");
     }
   }
 }
@@ -550,6 +553,12 @@ bool compareArrays(const int array1[4], const int array2[4])
   return true; // Arrays are identical
 }
 
+/**
+ * Rotates the messages displayed on the screen at a specified interval.
+ * The messages are stored in the activeMessages array and are cycled through
+ * using the currentMessageIndex variable. The displayChangeInterval determines
+ * how often the messages are rotated.
+ */
 void rotateMessages()
 {
   unsigned long currentTime = millis();
