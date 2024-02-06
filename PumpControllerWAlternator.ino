@@ -51,7 +51,7 @@ ulong lastRunTime = 0; // Initialize to 0
 int messageQty = 0;
 int maxMsg = 8;
 int activeMessages[10][4] = {0}; // Initialize all elements to 0, adjust the size as needed
-int currentMessage[4] = {0};     // Initialize all elements to 0
+int currentMessage[4] = {};     // Initialize all elements to 0
 
 unsigned long lastDisplayChangeTime = 0;
 const int displayChangeInterval = 1500;
@@ -159,47 +159,41 @@ int checkRunTimeElapsed(int delay)
  * @param currentPump The current active pump.
  * @return The new active pump.
  */
-int setActivePump(int currentPump)
+int setActivePump()
 {
-  if (bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1) && !bitRead(pumpAuto, 2))
+  if (bitRead(pumpAuto, 0) == 1 && bitRead(pumpAuto, 1) == 0 && bitRead(pumpAuto, 2) == 0)
   {
     return 0;
   }
-  else if (!bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1) && !bitRead(pumpAuto, 2))
+  else if (bitRead(pumpAuto, 0) == 0 && bitRead(pumpAuto, 1) == 1 && bitRead(pumpAuto, 2) == 0)
   {
     return 1;
   }
-  else if (!bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1) && bitRead(pumpAuto, 2))
+  else if (bitRead(pumpAuto, 0) == 0 && bitRead(pumpAuto, 1) == 0 && bitRead(pumpAuto, 2) == 1)
   {
     return 2;
   }
-  else if (bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1) && !bitRead(pumpAuto, 2))
+  else if (bitRead(pumpAuto, 0) == 1 && bitRead(pumpAuto, 1) == 1 && bitRead(pumpAuto, 2) == 0)
   {
-    lastPump = currentPump;
-    return (currentPump == 0) ? 1 : 0;
+    return (activePump == 0) ? 1 : 0;
   }
-  else if (!bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1) && bitRead(pumpAuto, 2))
+  else if (bitRead(pumpAuto, 0) == 0 && bitRead(pumpAuto, 1) == 1 && bitRead(pumpAuto, 2) == 1)
   {
-    lastPump = currentPump;
-    return (currentPump == 1) ? 1 : 2;
+    return (activePump == 1) ? 1 : 2;
   }
-  else if (bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1) && bitRead(pumpAuto, 2))
+  else if (bitRead(pumpAuto, 0) == 1 && bitRead(pumpAuto, 1) == 0 && bitRead(pumpAuto, 2) == 1)
   {
-    lastPump = currentPump;
-    return (currentPump == 0) ? 2 : 0;
+    return (activePump == 0) ? 2 : 0;
   }
-  else if (bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1) && bitRead(pumpAuto, 2))
+  else if (bitRead(pumpAuto, 0) == 1 && bitRead(pumpAuto, 1) == 1 && bitRead(pumpAuto, 2) == 1)
   {
-    switch (currentPump)
+    switch (activePump)
     {
     case 0:
-      lastPump = currentPump;
       return 1;
     case 1:
-      lastPump = currentPump;
       return 2;
     case 2:
-      lastPump = currentPump;
       return 0;
     }
   }
@@ -252,6 +246,7 @@ void inputLogic(byte inputs)
         ctime = checkRunTimeElapsed(150);
         if (!run && ctime)
         {
+          activePump = setActivePump();
           run = 1;
         }
         break;
@@ -294,7 +289,6 @@ void inputLogic(byte inputs)
         ctime = checkRunTimeElapsed(150);
         if (run && ctime)
         {
-          activePump = setActivePump(activePump);
           run = 0;
         }
         break;
@@ -315,6 +309,7 @@ int handActive()
 {
   if (bitRead(pumpHand, 0) || bitRead(pumpHand, 1) || bitRead(pumpHand, 2))
   {
+    delMessage(0);
     return 1;
   }
   else
@@ -331,6 +326,7 @@ int autoActive()
 {
   if (bitRead(pumpAuto, 0) || bitRead(pumpAuto, 1) || bitRead(pumpAuto, 2))
   {
+    delMessage(0);
     return 1;
   }
   else
@@ -366,6 +362,31 @@ void delMessage(int msg)
     removeMessage(msg);
     bitClear(msg1to8, msg);
   }
+}
+
+/**
+ * @brief Clears the auto messages.
+ *
+ * This function deletes the auto messages with IDs 1, 2, 4, and 6.
+ */
+void clearAuto()
+{
+  delMessage(1);
+  delMessage(2);
+  delMessage(4);
+  delMessage(6);
+}
+
+/**
+ * @brief Clears the hand by deleting specific messages.
+ *
+ * This function deletes messages with IDs 3, 5, and 7.
+ */
+void clearHand()
+{
+  delMessage(3);
+  delMessage(5);
+  delMessage(7);
 }
 
 /**
@@ -426,28 +447,67 @@ void handLogic()
 }
 
 /**
- * @brief Clears the auto messages.
- *
- * This function deletes the auto messages with IDs 1, 2, 4, and 6.
+ * Performs the automatic logic for controlling the pumps based on the run and activePump variables.
+ * If run is false, it sets the relay and running variables accordingly.
+ * If run is true, it checks the pumpAuto and activePump variables to determine which pumps to activate.
+ * It sets the relay, displays messages, and updates the running variable accordingly.
  */
-void clearAuto()
+void autoLogic()
 {
-  delMessage(1);
-  delMessage(2);
-  delMessage(4);
-  delMessage(6);
-}
+  if (!run)
+  {
+    setMessage(1);
+    setRelay = 0b00000000;
+    running = 0;
+  }
 
-/**
- * @brief Clears the hand by deleting specific messages.
- *
- * This function deletes messages with IDs 3, 5, and 7.
- */
-void clearHand()
-{
-  delMessage(3);
-  delMessage(5);
-  delMessage(7);
+  // Pump1
+  if (bitRead(pumpAuto, 0) && activePump == 0 && run)
+  {
+    bitSet(setRelay, 0);
+    bitSet(setRelay, 7);
+    setMessage(2);
+    setMessage(1);
+    running = 1;
+  }
+  else
+  {
+    bitClear(setRelay, 0);
+    bitClear(setRelay, 7);
+    delMessage(2);
+  }
+
+  // Pump2
+  if (bitRead(pumpAuto, 1) && activePump == 1 && run)
+  {
+    bitSet(setRelay, 1);
+    bitSet(setRelay, 6);
+    setMessage(4);
+    setMessage(1);
+    running = 2;
+  }
+  else
+  {
+    bitClear(setRelay, 1);
+    bitClear(setRelay, 6);
+    delMessage(4);
+  }
+
+  // Pump3
+  if (bitRead(pumpAuto, 2) && activePump == 2 && run)
+  {
+    bitSet(setRelay, 2);
+    bitSet(setRelay, 5);
+    setMessage(6);
+    setMessage(1);
+    running = 2;
+  }
+  else
+  {
+    bitClear(setRelay, 2);
+    bitClear(setRelay, 5);
+    delMessage(6);
+  }
 }
 
 /**
@@ -458,7 +518,8 @@ void clearHand()
  */
 void pumpLogic()
 {
-  if (handActive)
+  //handLogic
+  if (handActive() == 1)
   {
     clearAuto();
     handLogic();
@@ -469,68 +530,28 @@ void pumpLogic()
     handLogic();
   }
 
+  //autoLogic
   if (autoActive() == 1 && handActive() == 0)
   {
-    if (!run)
-    {
-      setMessage(1);
-      setRelay = 0b00000000;
-      running = 0;
-    }
+    delMessage(0);
+    clearHand();
+    autoLogic();
+  }
+  else
+  {
+    clearAuto();
+    autoLogic();
+  }
 
-    if (run)
-    {
-      // Pump1
-      if (bitRead(pumpAuto, 0) && activePump == 0)
-      {
-        if (run && !activePump)
-        {
-          bitSet(setRelay, 0);
-          bitSet(setRelay, 7);
-          setMessage(2);
-          setMessage(1);
-          running = 1;
-        }
-      }
-      else
-      {
-        bitClear(setRelay, 0);
-        bitClear(setRelay, 7);
-        delMessage(2);
-      }
-
-      // Pump2
-      if (bitRead(pumpAuto, 1) && activePump == 1)
-      {
-                  bitSet(setRelay, 1);
-          bitSet(setRelay, 6);
-          setMessage(4);
-          setMessage(1);
-          running = 2;
-      }
-      else
-      {
-        bitClear(setRelay, 1);
-        bitClear(setRelay, 6);
-        delMessage(4);
-      }
-
-      // Pump3
-      if (bitRead(pumpAuto, 2) && activePump == 2)
-      {
-          bitSet(setRelay, 2);
-          bitSet(setRelay, 5);
-          setMessage(6);
-          setMessage(1);
-          running = 2;
-      }
-      else
-      {
-        bitClear(setRelay, 2);
-        bitClear(setRelay, 5);
-        delMessage(6);
-      }
-    }
+  //set default display
+  if (autoActive() == 0 && handActive() == 0)
+  {
+    delMessage(1);
+    setMessage(0);
+  }
+  else
+  {
+    delMessage(0);
   }
 }
 
@@ -652,7 +673,7 @@ void rotateMessages()
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   pinMode(LATCH_PIN, OUTPUT);
   pinMode(CLOCK_PIN, OUTPUT);
@@ -671,10 +692,10 @@ void setup()
   pinMode(CLK_165_PIN, OUTPUT);
 
   digitalWrite(OE_595_PIN, LOW);
+  activePump = setActivePump();
   Serial.println("System Ready");
   Serial.println("PumpControllerV2.1");
   Serial.println("WellWorksLLC-DMC");
-  Serial.println();
 }
 
 void loop()
@@ -682,7 +703,6 @@ void loop()
   dataFrom165 = readByteFrom165();
   inputLogic(dataFrom165);
   pumpLogic();
-  // setDisplay(disChoice);
   rotateMessages();
   updateDisplayAndRelay();
 }
