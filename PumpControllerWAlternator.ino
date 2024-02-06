@@ -534,13 +534,11 @@ void pumpLogic()
   if (autoActive() == 1 && handActive() == 0)
   {
     delMessage(0);
-    clearHand();
     autoLogic();
   }
   else
   {
     clearAuto();
-    autoLogic();
   }
 
   //set default display
