@@ -1,5 +1,5 @@
 #include <SD.h>
-#include "MessageHandler.ino"
+//#include "MessageHandler.h"
 // #include <SoftwareSerial.h>
 
 #define uchar unsigned char
@@ -276,12 +276,21 @@ void inputLogic(byte inputs)
 
 bool handActive()
 {
-  return bitRead(pumpHand, 0) || bitRead(pumpHand, 1);
+  return bitRead(pumpHand, 0) || bitRead(pumpHand, 1) || bitRead(pumpHand, 2);
 }
 
 bool autoActive()
 {
-  return bitRead(pumpAuto, 0) || bitRead(pumpAuto, 1);
+  return bitRead(pumpAuto, 0) || bitRead(pumpAuto, 1) || bitRead(pumpAuto, 2);
+}
+
+void setMessage(int msg)
+{
+  if (!bitRead(msg1to8, msg))
+  {
+    addMessage(msg);
+    bitSet(msg1to8, msg);
+  }
 }
 
 void pumpLogic()
@@ -301,9 +310,10 @@ void pumpLogic()
       running = 2;
     }
   }
+  
   if (!run)
   {
-    if (bitRead(pumpAuto, 0) || bitRead(pumpAuto, 1))
+    if (autoActive)
     {
       if (!bitRead(msg1to8, 1))
       {
@@ -323,11 +333,7 @@ void pumpLogic()
     }
     else
     {
-      if (!bitRead(msg1to8, 0))
-      {
-        addMessage(0);
-        bitSet(msg1to8, 0);
-      }
+      setMessage(0);
     }
   }
   else
@@ -340,11 +346,7 @@ void pumpLogic()
       {
         bitSet(setRelay, 0);
         bitSet(setRelay, 3);
-        if (!bitRead(msg1to8, 2))
-        {
-          addMessage(2);
-          bitSet(msg1to8, 2);
-        }
+        setMessage(2);
         running = 1;
       }
     }
@@ -366,11 +368,7 @@ void pumpLogic()
       {
         bitSet(setRelay, 1);
         bitSet(setRelay, 4);
-        if (!bitRead(msg1to8, 3))
-        {
-          addMessage(4);
-          bitSet(msg1to8, 3);
-        }
+        setMessage(4);
         running = 2;
       }
     }
