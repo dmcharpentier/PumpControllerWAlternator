@@ -163,6 +163,7 @@ int setActivePump()
 {
   if (bitRead(pumpAuto, 0) == 1 && bitRead(pumpAuto, 1) == 0 && bitRead(pumpAuto, 2) == 0)
   {
+    lastPump = activePump;
     return 0;
   }
   else if (bitRead(pumpAuto, 0) == 0 && bitRead(pumpAuto, 1) == 1 && bitRead(pumpAuto, 2) == 0)
@@ -500,7 +501,7 @@ void autoLogic()
     bitSet(setRelay, 5);
     setMessage(6);
     setMessage(1);
-    running = 2;
+    running = 3;
   }
   else
   {
