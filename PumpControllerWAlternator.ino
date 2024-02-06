@@ -65,10 +65,12 @@ const int statusMessages[][4] = {
   { 28, 27, 27, 28 },  // " -- " 0
   { 10, 26, 25, 22 },  //"AUto"  1
   { 23, 27, 1, 10 },   // "P-1A" 2
-  { 23, 27, 2, 10 },   // "P-2A" 3
-  { 23, 27, 1, 17 },   // "P-1H" 4
+  { 23, 27, 1, 17 },   // "P-1H" 3
+  { 23, 27, 2, 10 },   // "P-2A" 4
   { 23, 27, 2, 17 },   // "P-2H" 5
-  { 15, 24, 24, 28 }   // "Err " 6
+  { 23, 27, 3, 10 },   // "P-3A" 6
+  { 23, 27, 3, 17 },   // "P-3H" 7
+  { 15, 24, 24, 28 }   // "Err " 8
 };
 
 uchar tubeSegments[] = { 0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f, 0x77, 0x7c, 0x39, 0x58, 0x5e, 0x79, 0x71, 0x76, 0x74, 0x38, 0x54, 0x37, 0x5c, 0x73, 0x50, 0x78, 0x3e, 0x40, 0x00 };
@@ -129,6 +131,19 @@ int checkRunTimeElapsed(int delay) {
   }
 }
 
+int setActivePump(int currentPump) {
+  if (!bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1)) {
+    //return currentPump;
+  } else if (bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1)) {
+    return 0;
+  } else if (!bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1)) {
+    return 1;
+  } else {
+    lastPump = currentPump;
+    return (currentPump == 0) ? 1 : 0;
+  }
+}
+
 void inputLogic(byte inputs) {
   int ctime;
   //enable when on
@@ -153,6 +168,14 @@ void inputLogic(byte inputs) {
           //P2H - Set pump2 Hand
           bitSet(pumpHand, 1);
           //extChoice = 5;
+          break;
+        case 4:
+          //P3A - Set pump3 Auto
+          bitSet(pumpAuto, 2);
+          break;
+        case 5:
+          //P3H - Set pump3 Hand
+          bitSet(pumpHand, 2);
           break;
         case 7:
           ctime = checkRunTimeElapsed(150);
@@ -200,43 +223,38 @@ void inputLogic(byte inputs) {
   }
 }
 
-int setActivePump(int currentPump) {
-  if (!bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1)) {
-    //return currentPump;
-  } else if (bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1)) {
-    return 0;
-  } else if (!bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1)) {
-    return 1;
-  } else {
-    lastPump = currentPump;
-    return (currentPump == 0) ? 1 : 0;
-  }
-}
-
 bool handActive() {
   return bitRead(pumpHand, 0) || bitRead(pumpHand, 1);
 }
 
-void pumpLogic() {
-  if (handActive) {
-    if (bitRead(pumpHand, 0)) {
+void pumpLogic()
+{
+  if (handActive)
+  {
+    if (bitRead(pumpHand, 0))
+    {
       bitSet(setRelay, 0);
-      addMessage(4);
+      addMessage(3);
       running = 1;
     }
-    if (bitRead(pumpHand, 1)) {
+    if (bitRead(pumpHand, 1))
+    {
       bitSet(setRelay, 1);
       addMessage(5);
       running = 2;
     }
   }
-  if (!run) {
-    if (bitRead(pumpAuto, 0) || bitRead(pumpAuto, 1)) {
-      if (!bitRead(msg1to8, 1)) {
+  if (!run)
+  {
+    if (bitRead(pumpAuto, 0) || bitRead(pumpAuto, 1))
+    {
+      if (!bitRead(msg1to8, 1))
+      {
         addMessage(1);
         bitSet(msg1to8, 1);
       }
-      if (bitRead(msg1to8, 3)) {
+      if (bitRead(msg1to8, 3))
+      {
         delMessage(3);
         bitClear(msg1to8, 3);
       }
@@ -245,51 +263,69 @@ void pumpLogic() {
       bitClear(setRelay, 3);
       bitClear(setRelay, 4);
       running = 0;
-    } else {
-      if (!bitRead(msg1to8, 0)) {
+    }
+    else
+    {
+      if (!bitRead(msg1to8, 0))
+      {
         addMessage(0);
         bitSet(msg1to8, 0);
       }
     }
-  } else
-    //Pump1
-    //messageQty = 0;
-    if (bitRead(pumpAuto, 0) && !activePump && !bitRead(pumpHand, 0) && run) {
-      if (run && !activePump) {
+  }
+  else
+  {
+    // Pump1
+    // messageQty = 0;
+    if (bitRead(pumpAuto, 0) && !activePump && !bitRead(pumpHand, 0) && run)
+    {
+      if (run && !activePump)
+      {
         bitSet(setRelay, 0);
         bitSet(setRelay, 3);
-        if (!bitRead(msg1to8, 2)) {
+        if (!bitRead(msg1to8, 2))
+        {
           addMessage(2);
           bitSet(msg1to8, 2);
         }
         running = 1;
       }
-    } else if (activePump) {
+    }
+    else if (activePump)
+    {
       bitClear(setRelay, 0);
       bitClear(setRelay, 3);
-      if (bitRead(msg1to8, 2)) {
+      if (bitRead(msg1to8, 2))
+      {
         delMessage(2);
         bitClear(msg1to8, 2);
       }
     }
 
-  //Pump2
-  if (bitRead(pumpAuto, 1) && activePump && !bitRead(pumpHand, 1) && run) {
-    if (run && activePump) {
-      bitSet(setRelay, 1);
-      bitSet(setRelay, 4);
-      if (!bitRead(msg1to8, 3)) {
-        addMessage(3);
-        bitSet(msg1to8, 3);
+    // Pump2
+    if (bitRead(pumpAuto, 1) && activePump && !bitRead(pumpHand, 1) && run)
+    {
+      if (run && activePump)
+      {
+        bitSet(setRelay, 1);
+        bitSet(setRelay, 4);
+        if (!bitRead(msg1to8, 3))
+        {
+          addMessage(4);
+          bitSet(msg1to8, 3);
+        }
+        running = 2;
       }
-      running = 2;
     }
-  } else if (!activePump) {
-    bitClear(setRelay, 1);
-    bitClear(setRelay, 4);
-    if (bitRead(msg1to8, 3)) {
-      delMessage(3);
-      bitClear(msg1to8, 3);
+    else if (!activePump)
+    {
+      bitClear(setRelay, 1);
+      bitClear(setRelay, 4);
+      if (bitRead(msg1to8, 3))
+      {
+        delMessage(3);
+        bitClear(msg1to8, 3);
+      }
     }
   }
 }
