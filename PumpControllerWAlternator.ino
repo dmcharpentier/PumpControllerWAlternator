@@ -162,22 +162,47 @@ int checkRunTimeElapsed(int delay)
  */
 int setActivePump(int currentPump)
 {
-  if (!bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1))
-  {
-    // return currentPump;
-  }
-  else if (bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1))
+  if (bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1) && !bitRead(pumpAuto, 2))
   {
     return 0;
   }
-  else if (!bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1))
+  else if (!bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1) && !bitRead(pumpAuto, 2))
   {
     return 1;
   }
-  else
+  else if (!bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1) && bitRead(pumpAuto, 2))
+  {
+    return 2;
+  }
+  else if (bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1) && !bitRead(pumpAuto, 2))
   {
     lastPump = currentPump;
     return (currentPump == 0) ? 1 : 0;
+  }
+  else if (!bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1) && bitRead(pumpAuto, 2))
+  {
+    lastPump = currentPump;
+    return (currentPump == 1) ? 1 : 2;
+  }
+  else if (bitRead(pumpAuto, 0) && !bitRead(pumpAuto, 1) && bitRead(pumpAuto, 2))
+  {
+    lastPump = currentPump;
+    return (currentPump == 0) ? 2 : 0;
+  }
+  else if (bitRead(pumpAuto, 0) && bitRead(pumpAuto, 1) && bitRead(pumpAuto, 2))
+  {
+    switch (currentPump)
+    {
+    case 0:
+      lastPump = currentPump;
+      return 1;
+    case 1:
+      lastPump = currentPump;
+      return 2;
+    case 2:
+      lastPump = currentPump;
+      return 0;
+    }
   }
 }
 
@@ -190,7 +215,6 @@ int setActivePump(int currentPump)
 void inputLogic(byte inputs)
 {
   int ctime;
-  // enable when on
   for (int i = 0; i < 8; ++i)
   {
     if (bitRead(inputs, i))
@@ -225,6 +249,7 @@ void inputLogic(byte inputs)
         bitSet(pumpHand, 2);
         break;
       case 7:
+        // Set PressureSwitch run request
         ctime = checkRunTimeElapsed(150);
         if (!run && ctime)
         {
@@ -242,24 +267,32 @@ void inputLogic(byte inputs)
       switch (i)
       {
       case 0:
-        // Set pump1 Active
+        // P1A - Clear pump1 Auto
         bitClear(pumpAuto, 0);
         break;
       case 1:
-        // Command for bit 1
+        // P1H - Clear pump1 Hand
         bitClear(pumpHand, 0);
         break;
       case 2:
-        // Set pump1 Active
+        // P2A - Clear pump2 Auto
         bitClear(pumpAuto, 1);
         break;
       case 3:
-        // Command for bit 1
+        // P2H - Clear pump2 Hand
         bitClear(pumpHand, 1);
         break;
+      case 4:
+        // P3A - Clear pump3 Auto
+        bitClear(pumpAuto, 2);
+        break;
+      case 5:
+        // P3H - Clear pump3 Hand
+        bitClear(pumpHand, 2);
+        break;
       case 7:
+        // Clear PressureSwitch run request
         ctime = checkRunTimeElapsed(150);
-        // Command for bit 1
         if (run && ctime)
         {
           activePump = setActivePump(activePump);
@@ -274,6 +307,11 @@ void inputLogic(byte inputs)
   }
 }
 
+/**
+ * Checks if the either pump is in hand mode.
+ *
+ * @return 1 if the hand mode is active on either pump, 0 otherwise.
+ */
 int handActive()
 {
   if (bitRead(pumpHand, 0) || bitRead(pumpHand, 1) || bitRead(pumpHand, 2))
@@ -286,6 +324,10 @@ int handActive()
   }
 }
 
+/**
+ * Checks if the automatic pump control is active.
+ * @return 1 if the automatic pump control is active, 0 otherwise.
+ */
 int autoActive()
 {
   if (bitRead(pumpAuto, 0) || bitRead(pumpAuto, 1) || bitRead(pumpAuto, 2))
@@ -298,16 +340,26 @@ int autoActive()
   }
 }
 
+/**
+ * Sets the message for the given index.
+ * If the message at the given index is not already set, it adds the message and sets the corresponding bit.
+ *
+ * @param msg The index of the message to be set.
+ */
 void setMessage(int msg)
 {
   if (!bitRead(msg1to8, msg))
   {
-    // Serial.println(bitRead(msg1to8, msg));
     addMessage(msg);
     bitSet(msg1to8, msg);
   }
 }
 
+/**
+ * @brief Deletes a message from the message list and clears the corresponding bit in msg1to8.
+ *
+ * @param msg The message to be deleted.
+ */
 void delMessage(int msg)
 {
   if (bitRead(msg1to8, msg))
@@ -317,33 +369,68 @@ void delMessage(int msg)
   }
 }
 
+/**
+ * @brief This function handles the logic for controlling the pump based on the hand input.
+ *
+ * It checks the status of the pumpHand variable and sets or clears the corresponding relay and message.
+ * If the pumpHand bit 0 is set, it sets the relay 0, displays message 3, and sets the running variable to 1.
+ * If the pumpHand bit 0 is clear, it clears the relay 0 and deletes message 3.
+ * If the pumpHand bit 1 is set, it sets the relay 1, displays message 5, and sets the running variable to 2.
+ * If the pumpHand bit 1 is clear, it clears the relay 1 and deletes message 5.
+ */
 void handLogic()
 {
+  //Hand Pump1
   if (bitRead(pumpHand, 0))
   {
     bitSet(setRelay, 0);
+    bitSet(setRelay, 7);
     setMessage(3);
     running = 1;
   }
   else
   {
     bitClear(setRelay, 0);
+    bitClear(setRelay, 7);
     delMessage(3);
   }
 
+  //Hand Pump2
   if (bitRead(pumpHand, 1))
   {
     bitSet(setRelay, 1);
+    bitSet(setRelay, 6);
     setMessage(5);
     running = 2;
   }
   else
   {
     bitClear(setRelay, 1);
+    bitClear(setRelay, 6);
     delMessage(5);
+  }
+
+  //Hand Pump3
+  if (bitRead(pumpHand, 2))
+  {
+    bitSet(setRelay, 2);
+    bitSet(setRelay, 5);
+    setMessage(7);
+    running = 2;
+  }
+  else
+  {
+    bitClear(setRelay, 2);
+    bitClear(setRelay, 5);
+    delMessage(7);
   }
 }
 
+/**
+ * @brief Clears the auto messages.
+ *
+ * This function deletes the auto messages with IDs 1, 2, 4, and 6.
+ */
 void clearAuto()
 {
   delMessage(1);
@@ -352,6 +439,11 @@ void clearAuto()
   delMessage(6);
 }
 
+/**
+ * @brief Clears the hand by deleting specific messages.
+ *
+ * This function deletes messages with IDs 3, 5, and 7.
+ */
 void clearHand()
 {
   delMessage(3);
@@ -359,6 +451,12 @@ void clearHand()
   delMessage(7);
 }
 
+/**
+ * Executes the logic for controlling the pumps based on the active mode (hand or auto).
+ * If hand mode is active, it calls the handLogic function.
+ * If auto mode is active and hand mode is inactive, it controls the pumps based on the pumpAuto settings.
+ * @note This function assumes that the variables handActive, pumpAuto, activePump, run, setRelay, running are properly initialized and defined.
+ */
 void pumpLogic()
 {
   if (handActive)
@@ -376,7 +474,6 @@ void pumpLogic()
   {
     if (!run)
     {
-      // delMessage(0);
       setMessage(1);
       setRelay = 0b00000000;
       running = 0;
@@ -385,7 +482,7 @@ void pumpLogic()
     if (run)
     {
       // Pump1
-      if (bitRead(pumpAuto, 0) && !activePump)
+      if (bitRead(pumpAuto, 0) && activePump == 0)
       {
         if (run && !activePump)
         {
@@ -404,34 +501,42 @@ void pumpLogic()
       }
 
       // Pump2
-      if (bitRead(pumpAuto, 1) && activePump)
+      if (bitRead(pumpAuto, 1) && activePump == 1)
       {
-        if (run && activePump)
-        {
-          bitSet(setRelay, 1);
+                  bitSet(setRelay, 1);
           bitSet(setRelay, 6);
           setMessage(4);
           setMessage(1);
           running = 2;
-        }
       }
-      else if (!activePump)
+      else
       {
         bitClear(setRelay, 1);
         bitClear(setRelay, 6);
         delMessage(4);
       }
+
+      // Pump3
+      if (bitRead(pumpAuto, 2) && activePump == 2)
+      {
+          bitSet(setRelay, 2);
+          bitSet(setRelay, 5);
+          setMessage(6);
+          setMessage(1);
+          running = 2;
+      }
+      else
+      {
+        bitClear(setRelay, 2);
+        bitClear(setRelay, 5);
+        delMessage(6);
+      }
     }
-  }
-  else
-  {
-    // clearAuto();
-    // setMessage(0);
   }
 }
 
 /**
- * Sets the display bits for a 4-digit display.
+ * Sets the display bits for the 4-digit display.
  *
  * @param displayChar An array of integers representing the bits to be displayed on each digit.
  */
@@ -466,21 +571,7 @@ void addMessage(int option)
     {
       activeMessages[messageQty][i] = newData[i];
     }
-    /**
-    Serial.print("Adding new message: ");
-    Serial.print(option);
-    Serial.print(",");
-    for (int i = 0; i < 4; i++)
-    {
-      Serial.print(newData[i]);
-    }
-    Serial.println();
-    **/
     messageQty++;
-  }
-  else
-  {
-    // Serial.println("Message queue is full");
   }
 }
 
@@ -500,20 +591,9 @@ void removeMessage(int option)
   {
     targetData[i] = statusMessages[option][i];
   }
-  /**
-  Serial.print("Deleting message: ");
-  Serial.print(option);
-  Serial.print(",");
-  for (int i = 0; i < 4; i++)
-  {
-    Serial.print(targetData[i]);
-  }
-  Serial.println();
-  **/
 
   for (int i = 0; i < messageQty; i++)
   {
-    // Serial.println(compareArrays(activeMessages[i], targetData));
     if (compareArrays(activeMessages[i], targetData))
     {
       // If the current message matches the targetData, remove it
@@ -524,13 +604,8 @@ void removeMessage(int option)
           activeMessages[j][k] = activeMessages[j + 1][k];
         }
       }
-      // Serial.println("Compare found an equal");
       messageQty--;
       break; // Break out of the loop after removing the first matching message
-    }
-    else
-    {
-      // Serial.println("Compare found no equal");
     }
   }
 }
@@ -569,14 +644,8 @@ void rotateMessages()
   {
     // Increment the error message index
     currentMessageIndex = (currentMessageIndex + 1) % messageQty;
-
     // Set the display with the new error message
-    for (int i = 0; i < 4; i++)
-    {
-      // Serial.println(activeMessages[currentMessageIndex][i]);
-    }
     setDisplayBits(activeMessages[currentMessageIndex]);
-
     // Update the last display change time
     lastDisplayChangeTime = currentTime;
   }
@@ -604,6 +673,9 @@ void setup()
 
   digitalWrite(OE_595_PIN, LOW);
   Serial.println("System Ready");
+  Serial.println("PumpControllerV2.1");
+  Serial.println("WellWorksLLC-DMC");
+  Serial.println();
 }
 
 void loop()
