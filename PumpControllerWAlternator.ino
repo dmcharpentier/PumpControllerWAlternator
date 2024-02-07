@@ -53,8 +53,8 @@ int maxMsg = 8;
 int activeMessages[10][4] = {0}; // Initialize all elements to 0, adjust the size as needed
 int currentMessage[4] = {};     // Initialize all elements to 0
 
-unsigned long lastDisplayChangeTime = 0;
-const int displayChangeInterval = 1500;
+unsigned long lastDisplayChangeTime = 0;  // Stores the time when the display was last changed
+const int displayChangeInterval = 1500;  // The interval (in ms) at which the display should change
 int currentMessageIndex = 0;
 
 // Set tube segment hex characters
