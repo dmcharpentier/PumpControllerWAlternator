@@ -1,4 +1,5 @@
 #include <SD.h>
+#include <inttypes.h>
 //  #include <SoftwareSerial.h>
 
 #define uchar unsigned char
@@ -35,7 +36,7 @@ byte dataFrom165;
 // Pump and Hand button logic
 byte pumpAuto = 0b0000;    // Represents pump auto settings (4 pumps)
 byte pumpHand = 0b0000;    // Represents pump manual settings (4 pumps)
-byte msg1to8 = 0b00000000; // Initialize to 0
+uint16_t msg1to16 = 0b0000000000000000; // Initialize to 0
 
 // Pump Logic
 int activePump = 0; // Initialize to 0
@@ -51,10 +52,11 @@ ulong lastRunTime = 0; // Initialize to 0
 int messageQty = 0;
 int maxMsg = 8;
 int activeMessages[10][4] = {0}; // Initialize all elements to 0, adjust the size as needed
-int currentMessage[4] = {};     // Initialize all elements to 0
+int currentMessage[4] = {};      // Initialize all elements to 0
+uint8_t Dot = 0x80;              // Dot for display
 
-unsigned long lastDisplayChangeTime = 0;  // Stores the time when the display was last changed
-const int displayChangeInterval = 1500;  // The interval (in ms) at which the display should change
+unsigned long lastDisplayChangeTime = 0; // Stores the time when the display was last changed
+const int displayChangeInterval = 750;  // The interval (in ms) at which the display should change
 int currentMessageIndex = 0;
 
 // Set tube segment hex characters
@@ -64,18 +66,37 @@ const int statusMessages[][4] = {
     {28, 27, 27, 28}, // " -- " 0
     {10, 26, 25, 22}, //"AUto"  1
     {23, 27, 1, 10},  // "P-1A" 2
-    {23, 27, 1, 17},  // "P-1H" 3
-    {23, 27, 2, 10},  // "P-2A" 4
-    {23, 27, 2, 17},  // "P-2H" 5
-    {23, 27, 3, 10},  // "P-3A" 6
+    {23, 27, 2, 10},  // "P-2A" 3
+    {23, 27, 3, 10},  // "P-3A" 4
+    {23, 27, 1, 17},  // "P-1H" 5
+    {23, 27, 2, 17},  // "P-2H" 6
     {23, 27, 3, 17},  // "P-3H" 7
-    {15, 24, 24, 28}  // "Err " 8
+    {26, 2, 27, 3}    // V-23 8
 };
 
 uchar tubeSegments[] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f, 0x77, 0x7c, 0x39, 0x58, 0x5e, 0x79, 0x71, 0x76, 0x74, 0x38, 0x54, 0x37, 0x5c, 0x73, 0x50, 0x78, 0x3e, 0x40, 0x00};
 uchar tubeNumbers[] = {0xfe, 0xff, 0xfd, 0xff, 0xfb, 0xff, 0xf7, 0xff};
 
 // Read 8 button inputs
+
+uint8_t Read_Inputs(void)
+{
+    uint8_t i;
+    uint8_t Temp = 0;
+    // Write pulse to load pin
+    digitalWrite(LOAD_165_PIN, LOW);
+    delayMicroseconds(5);
+    digitalWrite(LOAD_165_PIN, HIGH);
+    for (i = 0; i < 8; i++)
+    {
+        Temp <<= 1;
+        digitalWrite(CLK_165_PIN, HIGH);
+        Temp |= digitalRead(DATA_165_PIN);
+        digitalWrite(CLK_165_PIN, LOW);
+    }
+    return Temp;
+}
+
 byte readByteFrom165()
 {
   uchar byte_temp = 0;
@@ -113,8 +134,28 @@ void updateDisplayAndRelay()
   bitRelayUpdate();
 }
 
+void ForceSetDisplay(int option)
+{
+  dat_buf[0] = activeMessages[option][0];
+  dat_buf[2] = activeMessages[option][1];
+  dat_buf[4] = activeMessages[option][2];
+  dat_buf[6] = activeMessages[option][3];
+  for (int comNum = 0; comNum < 8; comNum++)
+  {
+    displayData = dat_buf[comNum];
+    uchar tubeData = tubeSegments[displayData];
+    uchar bitNum = tubeNumbers[comNum];
+
+    digitalWrite(LATCH_PIN, LOW);
+    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, setRelay);
+    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, bitNum);
+    shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, tubeData);
+    digitalWrite(LATCH_PIN, HIGH);
+  }
+}
+
 /**
- * Updates the bit relay by shifting out the relay state, bit number, and tube data.
+ * Updates the relay by shifting out the relay state, bit number, and tube data.
  * This function is responsible for controlling the relay operation.
  */
 void bitRelayUpdate()
@@ -168,23 +209,42 @@ int setActivePump()
   }
   else if (bitRead(pumpAuto, 0) == 0 && bitRead(pumpAuto, 1) == 1 && bitRead(pumpAuto, 2) == 0)
   {
+    lastPump = activePump;
     return 1;
   }
   else if (bitRead(pumpAuto, 0) == 0 && bitRead(pumpAuto, 1) == 0 && bitRead(pumpAuto, 2) == 1)
   {
+    lastPump = activePump;
     return 2;
   }
   else if (bitRead(pumpAuto, 0) == 1 && bitRead(pumpAuto, 1) == 1 && bitRead(pumpAuto, 2) == 0)
   {
-    return (activePump == 0) ? 1 : 0;
+    lastPump = activePump;
+    return activePump = 1 - activePump;
   }
   else if (bitRead(pumpAuto, 0) == 0 && bitRead(pumpAuto, 1) == 1 && bitRead(pumpAuto, 2) == 1)
   {
-    return (activePump == 1) ? 1 : 2;
+    lastPump = activePump;
+    if (lastPump == 2)
+    {
+      return 1;
+    }
+    else
+    {
+      return 2;
+    }
   }
   else if (bitRead(pumpAuto, 0) == 1 && bitRead(pumpAuto, 1) == 0 && bitRead(pumpAuto, 2) == 1)
   {
-    return (activePump == 0) ? 2 : 0;
+    lastPump = activePump;
+    if (lastPump == 2)
+    {
+      return 0;
+    }
+    else
+    {
+      return 2;
+    }
   }
   else if (bitRead(pumpAuto, 0) == 1 && bitRead(pumpAuto, 1) == 1 && bitRead(pumpAuto, 2) == 1)
   {
@@ -245,10 +305,17 @@ void inputLogic(byte inputs)
       case 7:
         // Set PressureSwitch run request
         ctime = checkRunTimeElapsed(150);
-        if (!run && ctime)
+        if (bitRead(pumpAuto, 0) || bitRead(pumpAuto, 1) || bitRead(pumpAuto, 2))
         {
-          activePump = setActivePump();
-          run = 1;
+          if (!run && ctime)
+          {
+            activePump = setActivePump();
+            run = 1;
+          }
+        }
+        else
+        {
+          run = 0;
         }
         break;
       default:
@@ -302,9 +369,9 @@ void inputLogic(byte inputs)
 }
 
 /**
- * Checks if the either pump is in hand mode.
+ * Checks if a pump is in hand mode.
  *
- * @return 1 if the hand mode is active on either pump, 0 otherwise.
+ * @return 1 if the hand mode is active on any pump, 0 otherwise.
  */
 int handActive()
 {
@@ -344,10 +411,10 @@ int autoActive()
  */
 void setMessage(int msg)
 {
-  if (!bitRead(msg1to8, msg))
+  if (!bitRead(msg1to16, msg))
   {
     addMessage(msg);
-    bitSet(msg1to8, msg);
+    bitSet(msg1to16, msg);
   }
 }
 
@@ -358,10 +425,10 @@ void setMessage(int msg)
  */
 void delMessage(int msg)
 {
-  if (bitRead(msg1to8, msg))
+  if (bitRead(msg1to16, msg))
   {
     removeMessage(msg);
-    bitClear(msg1to8, msg);
+    bitClear(msg1to16, msg);
   }
 }
 
@@ -374,8 +441,8 @@ void clearAuto()
 {
   delMessage(1);
   delMessage(2);
+  delMessage(3);
   delMessage(4);
-  delMessage(6);
 }
 
 /**
@@ -385,8 +452,8 @@ void clearAuto()
  */
 void clearHand()
 {
-  delMessage(3);
   delMessage(5);
+  delMessage(6);
   delMessage(7);
 }
 
@@ -401,37 +468,37 @@ void clearHand()
  */
 void handLogic()
 {
-  //Hand Pump1
+  // Hand Pump1
   if (bitRead(pumpHand, 0))
   {
     bitSet(setRelay, 0);
     bitSet(setRelay, 7);
-    setMessage(3);
+    setMessage(5);
     running = 1;
   }
   else
   {
     bitClear(setRelay, 0);
     bitClear(setRelay, 7);
-    delMessage(3);
+    delMessage(5);
   }
 
-  //Hand Pump2
+  // Hand Pump2
   if (bitRead(pumpHand, 1))
   {
     bitSet(setRelay, 1);
-    bitSet(setRelay, 6);
-    setMessage(5);
+    bitSet(setRelay, 3);
+    setMessage(6);
     running = 2;
   }
   else
   {
     bitClear(setRelay, 1);
-    bitClear(setRelay, 6);
-    delMessage(5);
+    bitClear(setRelay, 3);
+    delMessage(6);
   }
 
-  //Hand Pump3
+  // Hand Pump3
   if (bitRead(pumpHand, 2))
   {
     bitSet(setRelay, 2);
@@ -455,7 +522,7 @@ void handLogic()
  */
 void autoLogic()
 {
-  if (!run)
+  if (!run && handActive() == 0)
   {
     setMessage(1);
     setRelay = 0b00000000;
@@ -483,7 +550,7 @@ void autoLogic()
   {
     bitSet(setRelay, 1);
     bitSet(setRelay, 6);
-    setMessage(4);
+    setMessage(3);
     setMessage(1);
     running = 2;
   }
@@ -491,7 +558,7 @@ void autoLogic()
   {
     bitClear(setRelay, 1);
     bitClear(setRelay, 6);
-    delMessage(4);
+    delMessage(3);
   }
 
   // Pump3
@@ -499,7 +566,7 @@ void autoLogic()
   {
     bitSet(setRelay, 2);
     bitSet(setRelay, 5);
-    setMessage(6);
+    setMessage(4);
     setMessage(1);
     running = 3;
   }
@@ -507,7 +574,7 @@ void autoLogic()
   {
     bitClear(setRelay, 2);
     bitClear(setRelay, 5);
-    delMessage(6);
+    delMessage(4);
   }
 }
 
@@ -519,7 +586,17 @@ void autoLogic()
  */
 void pumpLogic()
 {
-  //handLogic
+  //
+  if (handActive() == 1 || (autoActive() == 1 && run == 1))
+  {
+    bitSet(setRelay, 4);
+  }
+  else
+  {
+    bitClear(setRelay, 4);
+  }
+
+  // handLogic
   if (handActive() == 1)
   {
     clearAuto();
@@ -531,7 +608,7 @@ void pumpLogic()
     handLogic();
   }
 
-  //autoLogic
+  // autoLogic
   if (autoActive() == 1 && handActive() == 0)
   {
     delMessage(0);
@@ -542,7 +619,7 @@ void pumpLogic()
     clearAuto();
   }
 
-  //set default display
+  // set default display
   if (autoActive() == 0 && handActive() == 0)
   {
     delMessage(1);
@@ -555,40 +632,19 @@ void pumpLogic()
 }
 
 /**
- * Sets the display bits for the 4-digit display.
- *
- * @param displayChar An array of integers representing the bits to be displayed on each digit.
- */
-void setDisplayBits(const int displayChar[4])
-{
-  for (int i = 0; i < 4; i++)
-  {
-    dat_buf[2 * i] = displayChar[i];
-  }
-}
-
-/**
  * Adds a new message to the activeMessages array.
  *
  * @param option The index of the status message to be added.
  */
 void addMessage(int option)
 {
-  int newData[4];
-
-  // Copy the status message to newData
-  for (int i = 0; i < 4; i++)
-  {
-    newData[i] = statusMessages[option][i];
-  }
-
   // Check if there is space in the activeMessages array
   if (messageQty < maxMsg)
   {
     // Add the new message to activeMessages
     for (int i = 0; i < 4; i++)
     {
-      activeMessages[messageQty][i] = newData[i];
+      activeMessages[messageQty][i] = statusMessages[option][i];
     }
     messageQty++;
   }
@@ -604,16 +660,9 @@ void addMessage(int option)
  */
 void removeMessage(int option)
 {
-  // Get the message to be removed
-  int targetData[4];
-  for (int i = 0; i < 4; i++)
-  {
-    targetData[i] = statusMessages[option][i];
-  }
-
   for (int i = 0; i < messageQty; i++)
   {
-    if (compareArrays(activeMessages[i], targetData))
+    if (compareArrays(activeMessages[i], statusMessages[option]))
     {
       // If the current message matches the targetData, remove it
       for (int j = i; j < messageQty - 1; j++)
@@ -661,10 +710,13 @@ void rotateMessages()
   // Check if the display change interval has passed
   if (currentTime - lastDisplayChangeTime >= displayChangeInterval)
   {
-    // Increment the error message index
+    // Increment the message index
     currentMessageIndex = (currentMessageIndex + 1) % messageQty;
-    // Set the display with the new error message
-    setDisplayBits(activeMessages[currentMessageIndex]);
+    // Set the display with the new message
+    for (int i = 0; i < 4; i++)
+    {
+      dat_buf[2 * i] = activeMessages[currentMessageIndex][i];
+    }
     // Update the last display change time
     lastDisplayChangeTime = currentTime;
   }
@@ -693,8 +745,27 @@ void setup()
   digitalWrite(OE_595_PIN, LOW);
   activePump = setActivePump();
   Serial.println("System Ready");
-  Serial.println("PumpControllerV2.1");
+  Serial.println("PumpControllerV2.3");
   Serial.println("WellWorksLLC-DMC");
+  int start = 1;
+  int count = 0;
+  setMessage(8);
+  while (start == 1)
+  {
+    rotateMessages();
+    updateDisplayAndRelay();
+    if (count == 10000)
+    {
+      delMessage(8);
+      start = 0;
+    }
+    else
+    {
+      count++;
+    }
+    
+  }
+  
 }
 
 void loop()
