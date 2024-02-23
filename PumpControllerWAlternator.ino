@@ -34,8 +34,8 @@ uchar comNum = 0;         // Initialize to 0
 byte dataFrom165;
 
 // Pump and Hand button logic
-byte pumpAuto = 0b0000;    // Represents pump auto settings (4 pumps)
-byte pumpHand = 0b0000;    // Represents pump manual settings (4 pumps)
+byte pumpAuto = 0b0000;                 // Represents pump auto settings (4 pumps)
+byte pumpHand = 0b0000;                 // Represents pump manual settings (4 pumps)
 uint16_t msg1to16 = 0b0000000000000000; // Initialize to 0
 
 // Pump Logic
@@ -56,7 +56,7 @@ int currentMessage[4] = {};      // Initialize all elements to 0
 uint8_t Dot = 0x80;              // Dot for display
 
 unsigned long lastDisplayChangeTime = 0; // Stores the time when the display was last changed
-const int displayChangeInterval = 750;  // The interval (in ms) at which the display should change
+const int displayChangeInterval = 750;   // The interval (in ms) at which the display should change
 int currentMessageIndex = 0;
 
 // Set tube segment hex characters
@@ -81,20 +81,20 @@ uchar tubeNumbers[] = {0xfe, 0xff, 0xfd, 0xff, 0xfb, 0xff, 0xf7, 0xff};
 
 uint8_t Read_Inputs(void)
 {
-    uint8_t i;
-    uint8_t Temp = 0;
-    // Write pulse to load pin
-    digitalWrite(LOAD_165_PIN, LOW);
-    delayMicroseconds(5);
-    digitalWrite(LOAD_165_PIN, HIGH);
-    for (i = 0; i < 8; i++)
-    {
-        Temp <<= 1;
-        digitalWrite(CLK_165_PIN, HIGH);
-        Temp |= digitalRead(DATA_165_PIN);
-        digitalWrite(CLK_165_PIN, LOW);
-    }
-    return Temp;
+  uint8_t i;
+  uint8_t Temp = 0;
+  // Write pulse to load pin
+  digitalWrite(LOAD_165_PIN, LOW);
+  delayMicroseconds(5);
+  digitalWrite(LOAD_165_PIN, HIGH);
+  for (i = 0; i < 8; i++)
+  {
+    Temp <<= 1;
+    digitalWrite(CLK_165_PIN, HIGH);
+    Temp |= digitalRead(DATA_165_PIN);
+    digitalWrite(CLK_165_PIN, LOW);
+  }
+  return Temp;
 }
 
 byte readByteFrom165()
@@ -763,9 +763,7 @@ void setup()
     {
       count++;
     }
-    
   }
-  
 }
 
 void loop()
