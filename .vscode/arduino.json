@@ -1,6 +1,6 @@
 {
-    "configuration": "cpu=atmega328",
     "board": "arduino:avr:nano",
     "port": "COM5",
-    "sketch": "PumpControllerWAlternator.ino"
+    "sketch": "PumpControllerWAlternator.ino",
+    "configuration": "cpu=atmega328"
 }
