@@ -650,13 +650,11 @@ int autoActive()
 }
 
 /**
- * @brief This function handles the logic for controlling the pump based on the hand input.
- *
- * It checks the status of the pumpHand variable and sets or clears the corresponding relay and message.
- * If the pumpHand bit 0 is set, it sets the relay 0, displays message 3, and sets the running variable to 1.
- * If the pumpHand bit 0 is clear, it clears the relay 0 and deletes message 3.
- * If the pumpHand bit 1 is set, it sets the relay 1, displays message 5, and sets the running variable to 2.
- * If the pumpHand bit 1 is clear, it clears the relay 1 and deletes message 5.
+ * @brief Performs logic for controlling the hand pumps.
+ * 
+ * This function iterates through the hand pumps and updates the relay and message bits based on the state of each pump.
+ * If a pump is active, the corresponding relay bits are set and the message bit is set.
+ * If a pump is inactive, the corresponding relay bits are cleared and the message bit is cleared.
  */
 void handLogic()
 {
@@ -681,10 +679,9 @@ void handLogic()
 }
 
 /**
- * Performs the automatic logic for controlling the pumps based on the run and activePump variables.
- * If run is false, it sets the relay and running variables accordingly.
- * If run is true, it checks the pumpAuto and activePump variables to determine which pumps to activate.
- * It sets the relay, displays messages, and updates the running variable accordingly.
+ * Executes the logic for automatically controlling the pumps based on the current state and settings.
+ * This function checks the active pump, run status, and lag pump status to determine which pumps to activate or deactivate.
+ * It also updates the relay settings and messages accordingly.
  */
 void autoLogic()
 {
