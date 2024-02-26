@@ -91,7 +91,7 @@ const uint8_t statusMessages[][5] = {
     {23, 27, 1, 17, 0},  // "P-1H" 5
     {23, 27, 2, 17, 0},  // "P-2H" 6
     {23, 27, 3, 17, 0},  // "P-3H" 7
-    {26, 28, 2, 6, 3}    // "V 2.6" 8
+    {26, 28, 2, 7, 3}    // "V 2.7" 8
 };
 
 uint8_t  SEG8Code[] = 
@@ -809,7 +809,7 @@ void setup()
   digitalWrite(OE_595_PIN, LOW);
   setActivePump();
   Serial.println("System Ready");
-  Serial.println("PumpControllerV2.6");
+  Serial.println("PumpControllerV2.7");
   Serial.println("WellWorksLLC-DMC");
   int start = 1;
   int count = 0;
