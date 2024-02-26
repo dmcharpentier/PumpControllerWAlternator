@@ -121,16 +121,16 @@ byte readByteFrom165()
   return ~byte_temp;
 }
 
-/***************************************************************************
-
-                         Messaging System Functions
-
-***************************************************************************/
-/**
- * Adds a new message to the activeMessages array.
- * 
- * @param option The index of the statusMessages array to retrieve the message from.
- */
+/**************************************************************************
+*                                                                         *
+*                        Messaging System Functions                       *
+*                                                                         *
+***************************************************************************
+*     Adds a new message to the activeMessages array.                     *
+*                                                                         *
+* @param option The index of the statusMessages array to retrieve         *
+*               the message from.                                         *
+**************************************************************************/
 void addMessage(int option)
 {
   // Check if there is space in the activeMessages array
@@ -266,24 +266,19 @@ void clearHand()
   delMessage(7);
 }
 
-/*         
-
-              END MESSAGING SYSTEM FUNCTIONS
-
-*/
-
-/***************************************************************************
-
-                         Output System Functions
-
-***************************************************************************/
-/**
- * Sends data to a 74HC595 shift register.
- * 
- * @param Num The number to be sent to the shift register.
- * @param Seg The segment to be sent to the shift register.
- * @param out The output value to be sent to the shift register.
- */
+/**************************************************************************
+*                     END MESSAGING SYSTEM FUNCTIONS                      *
+***************************************************************************
+*                                                                         *
+*                     Begin Output System Functions                       *
+*                                                                         *
+*****  *****  *****  *****  *****  *****  *****  *****  *****  *****  *****
+* Sends data to a 74HC595 shift register.                                 *
+*                                                                         *
+* @param Num The number to be sent to the shift register.                 *
+* @param Seg The segment to be sent to the shift register.                *
+* @param out The output value to be sent to the shift register.           *
+**************************************************************************/
 void Send_74HC595(uint8_t Num, uint8_t Seg, uint8_t out)
 {
     shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, out);
@@ -311,16 +306,12 @@ void outputSend(void)
   BitsSele = (BitsSele + 1) % 4;
 }
 
-/*         
-
-              END OUTPUT SYSTEM FUNCTIONS
-
-*/
-
 /***************************************************************************
-
-                         Logic System Functions
-
+*                      END OUTPUT SYSTEM FUNCTIONS                         *
+****************************************************************************
+*                                                                          *
+*                     Begin Logic System Functions                         *
+*                                                                          *
 ***************************************************************************/
 
 /**
@@ -791,11 +782,9 @@ void pumpLogic()
   }
 }
 
-/*         
-
-                END LOGIC SYSTEM FUNCTIONS
-
-*/
+/**************************************************************************
+*                       END LOGIC SYSTEM FUNCTIONS                        *
+**************************************************************************/
 
 void setup()
 {
