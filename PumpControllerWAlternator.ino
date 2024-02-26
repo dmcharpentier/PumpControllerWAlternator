@@ -66,6 +66,51 @@ unsigned long lastDisplayChangeTime = 0; // Stores the time when the display was
 const int displayChangeInterval = 750;   // The interval (in ms) at which the display should change
 int currentMessageIndex = 0;
 
+//Analog Stuff
+//The voltage dividing resistors are 120KΩ and 100KΩ, and the ADC reference voltage is 5.00V
+//Voltage_ratio_value = 5.00 * (100+120)/1024
+#define Voltage_ratio_value 1.0742
+
+//The sampling resistor is 0.2K(200Ω), and the ADC reference voltage is 5.00V(500*0.01MA)
+//Current_ratio_value = (5.00/0.2/1024)*100
+#define Current_ratio_value  2.4414
+
+//4x 0/-4-20MA current input ports
+const int I1 = A0;
+const int I2 = A1;
+const int I3 = A2;
+const int I4 = A3;
+//4x 0-10V voltage input ports
+const int V1 = A4;
+const int V2 = A5;
+const int V3 = A6;
+const int V4 = A7;
+
+
+//Input current value, unit 0.01MA
+int I1_Current=0;
+int I2_Current=0;
+int I3_Current=0;
+int I4_Current=0;
+
+//Input voltage value, unit 0.01V
+int V1_Voltage=0;
+int V2_Voltage=0;
+int V3_Voltage=0;
+int V4_Voltage=0;
+
+//If there is a deviation in the reading, it may be the error of the 5V power supply voltage 
+//or the error of the sampling resistor value. This is a linear error, which can be calibrated by the error ratio.
+float I1_Calibration_value = 1000/1000; //I1 current calibration value
+float I2_Calibration_value = 1000/1000; //I2 current calibration value
+float I3_Calibration_value = 1000/1000; //I3 current calibration value
+float I4_Calibration_value = 1000/1000; //I4 current calibration value
+
+float V1_Calibration_value = 1000/1000; //V1 voltage calibration value
+float V2_Calibration_value = 1000/1000; //V2 voltage calibration value
+float V3_Calibration_value = 999/1000; //V3 voltage calibration value
+float V4_Calibration_value = 999/1000; //V4 voltage calibration value
+
 /**
  * @brief Array of status messages.
  * 
@@ -122,6 +167,30 @@ byte readByteFrom165()
   }
 
   return ~byte_temp;
+}
+
+float calibrationValues[] = {1000/1000, 1000/1000, 1000/1000, 1000/1000, 1000/1000, 1000/1000, 999/1000, 999/1000};
+
+void analogRead(void)
+{
+  float currents[4];
+  float voltages[4];
+
+  for (int i = 0; i < 4; i++) {
+    currents[i] = Current_ratio_value * analogRead(I1 + i);
+    currents[i] *= calibrationValues[i];
+    voltages[i] = Voltage_ratio_value * analogRead(V1 + i);
+    voltages[i] *= calibrationValues[i + 4];
+  }
+
+  I1_Current = currents[0];
+  I2_Current = currents[1];
+  I3_Current = currents[2];
+  I4_Current = currents[3];
+  V1_Voltage = voltages[0];
+  V2_Voltage = voltages[1];
+  V3_Voltage = voltages[2];
+  V4_Voltage = voltages[3];
 }
 
 /**************************************************************************
@@ -825,23 +894,19 @@ void printVersion()
 void setup()
 {
   Serial.begin(115200);
+  analogReference(EXTERNAL); // use AREF for reference voltage
 
   pumpOS.begin(2000); //initialize the scheduler
 
   initialInit();
   pumpOS.addTask(rotateMessages, pumpOS.convertMs(1000));
   printVersion();
-  pumpOS.addTask(inputLogic, pumpOS.convertMs(10));
-  pumpOS.addTask(pumpLogic, pumpOS.convertMs(10));
+  pumpOS.addTask(inputLogic, pumpOS.convertMs(50));
+  pumpOS.addTask(pumpLogic, pumpOS.convertMs(50));
+  pumpOS.addTask(analogRead, pumpOS.convertMs(150));
 }
 
 void loop()
 {
-  //rotateMessages();
-  if (loopVar == 16)
-  {
-    outputSend();
-    loopVar = 0;
-  }
-  loopVar++;
+  outputSend();
 }
