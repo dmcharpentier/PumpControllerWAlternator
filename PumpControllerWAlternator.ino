@@ -1,6 +1,9 @@
+//#include <WatchDog.h>
+#include <leOS2.h>
 #include <SD.h>
 #include <inttypes.h>
-//  #include <SoftwareSerial.h>
+// 
+leOS2 pumpOS; //create a new istance
 
 #define uchar unsigned char
 #define uint unsigned int
@@ -30,9 +33,6 @@ uchar setRemoteRelay = 0; // Initialize to 0
 uchar displayData = 0;    // Initialize to 0
 uchar comNum = 0;         // Initialize to 0
 
-// Raw input from buttons
-byte dataFrom165;
-
 // Pump and Hand button logic
 byte pumpAuto = 0b0000;                 // Represents pump auto settings (4 pumps)
 byte pumpHand = 0b0000;                 // Represents pump manual settings (4 pumps)
@@ -50,6 +50,9 @@ uint8_t disChoice = 0;  // Initialize to 0
 // Timers for logic
 ulong lastRunTime = 0; // Initialize to 0
 ulong lastLagTime = 0; // Initialize to 0
+
+bool isLagRunLogicScheduled = false; // Flag to track if the task is scheduled
+ulong lastLagRunCheck = 0; // Track the last time lag run logic was executed
 
 // Arrays for display Message Handling
 #define MAX_MSGS 10                 // Adjust as needed
@@ -195,21 +198,8 @@ bool compareArrays(const uint8_t array1[4], const uint8_t array2[4])
  */
 void rotateMessages()
 {
-  unsigned long currentTime = millis();
-
-  // Check if the display change interval has passed
-  if (currentTime - lastDisplayChangeTime >= displayChangeInterval)
-  {
-    // Increment the message index
-    currentMessageIndex = (currentMessageIndex + 1) % messageQty;
-    // Set the display with the new message
-    for (int i = 0; i < 5; i++)
-    {
-      curDisplay[i] = activeMessages[currentMessageIndex][i];
-    }
-    // Update the last display change time
-    lastDisplayChangeTime = currentTime;
-  }
+  currentMessageIndex = (currentMessageIndex + 1) % messageQty;
+  memcpy(curDisplay, activeMessages[currentMessageIndex], sizeof(curDisplay));
 }
 
 /**
@@ -463,8 +453,9 @@ void setActivePump()
  * The function executes commands based on the bit position of the input signals.
  * It sets or clears certain flags and variables accordingly.
  */
-void inputLogic(byte inputs)
+void inputLogic(void)
 {
+  byte inputs = readByteFrom165();
   uint8_t ctime;
   uint8_t ctime2;
   for (int i = 0; i < 8; ++i)
@@ -683,6 +674,16 @@ void autoLogic()
     setRelay = 0b00000000;
   }
 
+  //Set relay for chemical pumps or accessory pumps
+  if (handActive() == 1 || (autoActive() == 1 && run == 1))
+  {
+    setRelay |= 1 << 4;
+  }
+  else
+  {
+    setRelay &= ~(1 << 4);
+  }
+
   // Pump1
   if (bitRead(pumpAuto, 0) && ((ap == 0 && run) || (lagPump == 1 && lagRun)))
   {
@@ -737,16 +738,6 @@ void autoLogic()
  */
 void pumpLogic()
 {
-  //Set relay for chemical pumps or accessory pumps
-  if (handActive() == 1 || (autoActive() == 1 && run == 1))
-  {
-    bitSet(setRelay, 4);
-  }
-  else
-  {
-    bitClear(setRelay, 4);
-  }
-
   // handLogic
   if (handActive() == 1)
   {
@@ -786,10 +777,8 @@ void pumpLogic()
 *                       END LOGIC SYSTEM FUNCTIONS                        *
 **************************************************************************/
 
-void setup()
+void initialInit()
 {
-  Serial.begin(115200);
-
   pinMode(LATCH_PIN, OUTPUT);
   pinMode(CLOCK_PIN, OUTPUT);
   pinMode(DATA_PIN, OUTPUT);
@@ -811,12 +800,15 @@ void setup()
   Serial.println("System Ready");
   Serial.println("PumpControllerV2.7");
   Serial.println("WellWorksLLC-DMC");
+}
+
+void printVersion()
+{
   int start = 1;
   int count = 0;
   setMessage(8);
   while (start == 1)
   {
-    rotateMessages();
     outputSend();
     if (count == 10000)
     {
@@ -830,12 +822,23 @@ void setup()
   }
 }
 
+void setup()
+{
+  Serial.begin(115200);
+
+  pumpOS.begin(2000); //initialize the scheduler
+
+  initialInit();
+  pumpOS.addTask(rotateMessages, pumpOS.convertMs(1000));
+  printVersion();
+  pumpOS.addTask(inputLogic, pumpOS.convertMs(10));
+  pumpOS.addTask(pumpLogic, pumpOS.convertMs(10));
+}
+
 void loop()
 {
-  inputLogic(readByteFrom165());
-  pumpLogic();
-  rotateMessages();
-  if (loopVar == 15)
+  //rotateMessages();
+  if (loopVar == 16)
   {
     outputSend();
     loopVar = 0;
