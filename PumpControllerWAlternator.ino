@@ -59,7 +59,6 @@ ulong lastLagRunCheck = 0; // Track the last time lag run logic was executed
 #define MSG_SIZE 5                  // Number of segments per message
 int messageQty = 0;
 uint8_t activeMessages[MAX_MSGS][4]; // Initialize all elements to 0, adjust the size as needed
-uint8_t Dot = 0x80;              // Dot for display
 uint8_t curDisplay[5];
 
 unsigned long lastDisplayChangeTime = 0; // Stores the time when the display was last changed
@@ -86,6 +85,8 @@ const int V2 = A5;
 const int V3 = A6;
 const int V4 = A7;
 
+float currents[4];
+float voltages[4];
 
 //Input current value, unit 0.01MA
 int I1_Current=0;
@@ -139,7 +140,7 @@ const uint8_t statusMessages[][5] = {
     {23, 27, 1, 17, 0},  // "P-1H" 5
     {23, 27, 2, 17, 0},  // "P-2H" 6
     {23, 27, 3, 17, 0},  // "P-3H" 7
-    {26, 28, 2, 7, 3}    // "V 2.7" 8
+    {26, 28, 2, 8, 3}    // "V 2.8" 8
 };
 
 uint8_t  SEG8Code[] = 
@@ -173,9 +174,6 @@ float calibrationValues[] = {1000/1000, 1000/1000, 1000/1000, 1000/1000, 1000/10
 
 void analogRead(void)
 {
-  float currents[4];
-  float voltages[4];
-
   for (int i = 0; i < 4; i++) {
     currents[i] = Current_ratio_value * analogRead(I1 + i);
     currents[i] *= calibrationValues[i];
@@ -349,6 +347,7 @@ void Send_74HC595(uint8_t Num, uint8_t Seg, uint8_t out)
 
 void outputSend(void)
 {
+  uint8_t Dot = 0x80;              // Dot for display
   uint8_t tempPx[4] = {0};
   for (int i = 0; i < 4; i++)
   {
@@ -718,6 +717,7 @@ void handLogic()
     {
       setRelay |= 1 << relayBit;
       setRelay |= 1 << (7 - relayBit);
+      setRelay |= 1 << 4;
       setMessage(messageBit);
     }
     else
@@ -743,17 +743,7 @@ void autoLogic()
     setRelay = 0b00000000;
   }
 
-  //Set relay for chemical pumps or accessory pumps
-  if (handActive() == 1 || (autoActive() == 1 && run == 1))
-  {
-    setRelay |= 1 << 4;
-  }
-  else
-  {
-    setRelay &= ~(1 << 4);
-  }
-
-  // Pump1
+    // Pump1
   if (bitRead(pumpAuto, 0) && ((ap == 0 && run) || (lagPump == 1 && lagRun)))
   {
     setRelay |= 1 << 0;
@@ -807,8 +797,20 @@ void autoLogic()
  */
 void pumpLogic()
 {
+  bool hand = handActive();
+  bool autoa = autoActive();
+  //Set relay for chemical pumps or accessory pumps
+  if (hand == 1 || (autoa == 1 && run == 1))
+  {
+    setRelay |= 1 << 4;
+  }
+  else
+  {
+    setRelay &= ~(1 << 4);
+  }
+
   // handLogic
-  if (handActive() == 1)
+  if (hand == 1)
   {
     clearAuto();
     handLogic();
@@ -820,7 +822,7 @@ void pumpLogic()
   }
 
   // autoLogic
-  if (autoActive() == 1 && handActive() == 0)
+  if (autoa == 1 && hand == 0)
   {
     delMessage(0);
     autoLogic();
@@ -831,7 +833,7 @@ void pumpLogic()
   }
 
   // set default display
-  if (autoActive() == 0 && handActive() == 0)
+  if (autoa == 0 && hand == 0)
   {
     delMessage(1);
     setMessage(0);
@@ -867,7 +869,7 @@ void initialInit()
   digitalWrite(OE_595_PIN, LOW);
   setActivePump();
   Serial.println("System Ready");
-  Serial.println("PumpControllerV2.7");
+  Serial.println("PumpControllerV2.8");
   Serial.println("WellWorksLLC-DMC");
 }
 
